@@ -25,7 +25,7 @@ Mat trainingImage = imread(trainingData, 1);
 
 void segregate();
 void separateGroundTruth();
-void generateMetrics(Mat& locations_found, Mat& ground_truth, double& precision, double& recall, double& accuracy, double& specificity, double& f1);
+void generateMetrics(string name, Mat& locations_found, Mat& ground_truth);
 
 Mat black, white, red;
 
@@ -41,35 +41,29 @@ void separateGroundTruth() {
 
 	//segregate ground truth into black only
 	inRange(groundTruthImage, Scalar(0, 0, 0), Scalar(0, 0, 0), gt_black);
-	imshow("gtruth_b", gt_black);
+	//imshow("gtruth_b", gt_black);
 
 	//segregate ground truth into white only
 	inRange(groundTruthImage, Scalar(255, 255, 255), Scalar(255, 255, 255), gt_white);
-	imshow("gtruth_w", gt_white);
+	//imshow("gtruth_w", gt_white);
 
 	//segregate ground truth into red only
 	inRange(groundTruthImage, Scalar(0, 0, 255), Scalar(0, 0, 255), gt_red);
-	imshow("gtruth_r", gt_red);
-
-	double p_r, r_r, a_r, s_r, f_r;
-	double p_w, r_w, a_w, s_w, f_w;
-	double p_b, r_b, a_b, s_b, f_b;
-
-	generateMetrics(red, gt_red, p_r, r_r, a_r, s_r, f_r);
-	generateMetrics(white, gt_white, p_w, r_w, a_w, s_w, f_w);
-	generateMetrics(black, gt_black, p_b, r_b, a_b, s_b, f_b);
+	//imshow("gtruth_r", gt_red);
+	
+	generateMetrics("Red", red, gt_red);
+	generateMetrics("White", white, gt_white);
+	generateMetrics("Black", black, gt_black);
 }
 
-void generateMetrics(Mat& locations_found, Mat& ground_truth, double& precision, double& recall, double& accuracy, double& specificity, double& f1) {
-	//CV_Assert(locations_found.type() == CV_8UC1);
-	//CV_Assert(ground_truth.type() == CV_8UC1);
+void generateMetrics(string name, Mat& locations_found, Mat& ground_truth) {
+	double precision, recall, accuracy, specificity, f1;
 	int false_positives = 0;
 	int false_negatives = 0;
 	int true_positives = 0;
 	int true_negatives = 0;
-	for (int row = 0; row < ground_truth.rows; row++)
-		for (int col = 0; col < ground_truth.cols; col++)
-		{
+	for (int row = 0; row < ground_truth.rows; row++) {
+		for (int col = 0; col < ground_truth.cols; col++) {
 			uchar result = locations_found.at<uchar>(row, col);
 			uchar gt = ground_truth.at<uchar>(row, col);
 			if (gt > 0)
@@ -80,13 +74,14 @@ void generateMetrics(Mat& locations_found, Mat& ground_truth, double& precision,
 				false_positives++;
 			else true_negatives++;
 		}
+	}
 	precision = ((double)true_positives) / ((double)(true_positives + false_positives));
 	recall = ((double)true_positives) / ((double)(true_positives + false_negatives));
 	accuracy = ((double)(true_positives + true_negatives)) / ((double)(true_positives + false_positives + true_negatives + false_negatives));
 	specificity = ((double)true_negatives) / ((double)(false_positives + true_negatives));
 	f1 = 2.0*precision*recall / (precision + recall);
-	
-	cout << "Precision: " << precision << ", Recall: " << recall << ", Accuracy: " << accuracy << ", Specificity: " << specificity << ", f1: " << f1 << endl;
+
+	cout << name << ":" << endl << "Precision: " << precision << ", Recall: " << recall << ", Accuracy: " << accuracy << ", Specificity: " << specificity << ", f1: " << f1 << endl << endl;
 }
 
 void segregate() {
@@ -168,7 +163,7 @@ void segregate() {
 	crop.copyTo(inner_areas, bw);
 	normalize(bw.clone(), bw, 0.0, 255.0, CV_MINMAX, CV_8UC1);
 	cvtColor(inner_areas, inner_areas, CV_BGR2GRAY);
-	threshold(inner_areas, inner_areas, 0, 255, THRESH_BINARY_INV); 
+	threshold(inner_areas, inner_areas, 0, 255, THRESH_BINARY_INV);
 	floodFill(inner_areas, Point(0, 0), Scalar(0, 255, 0));
 	crop.copyTo(bw, inner_areas);
 
@@ -188,7 +183,7 @@ void segregate() {
 	//sign insides
 	floodFill(bw, Point(0, 0), Scalar(0, 0, 0));
 	threshold(bw, white, 0, 255, THRESH_OTSU);
-	
+
 	//for the love of fucking God work
 	floodFill(black_overlay, Point(0, 0), Scalar(0, 0, 0));
 	bitwise_or(white, black_overlay, white);

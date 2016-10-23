@@ -50,7 +50,7 @@ void separateGroundTruth() {
 	//segregate ground truth into red only
 	inRange(groundTruthImage, Scalar(0, 0, 255), Scalar(0, 0, 255), gt_red);
 	//imshow("gtruth_r", gt_red);
-	
+
 	generateMetrics("Red", red, gt_red);
 	generateMetrics("White", white, gt_white);
 	generateMetrics("Black", black, gt_black);
@@ -114,12 +114,14 @@ void segregate() {
 	//remove broken bits 
 	Mat closed_src;
 	morphologyEx(backprojection, closed_src, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+	imwrite("closed_src.png", closed_src);
 
 	Mat temp_range_red;
 	Mat src_copy = imread(composite, 1);
 	cvtColor(src_copy, temp_range_red, CV_BGR2HLS);
 	inRange(temp_range_red, Scalar(0, 0, 75), Scalar(180, 180, 180), temp_range_red);
 	morphologyEx(temp_range_red, temp_range_red, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+	imwrite("temp_range_red.png", temp_range_red);
 
 	//bitwise against original image to remove the background
 	Mat compositeImage_copy;

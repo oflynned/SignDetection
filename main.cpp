@@ -23,13 +23,13 @@ Mat compositeImage = imread(composite, 1);
 Mat groundTruthImage = imread(groundTruth, 1);
 Mat trainingImage = imread(trainingData, 1);
 
-void generateHistogram();
+void segregate();
 void generateMetrics();
 
 Mat black, white, red;
 
 int main(int argc, const char** argv) {
-	generateHistogram();
+	segregate();
 	//generateMetrics();
 	while (cv::waitKey(30) != ESC_KEY) {}
 	return 0;
@@ -37,13 +37,21 @@ int main(int argc, const char** argv) {
 
 void generateMetrics() {
 	Mat gt_red, gt_black, gt_white;
-	Mat gt_channels[3];
 
+	//segregate ground truth into black only
+	inRange(groundTruthImage, Scalar(0, 0, 0), Scalar(0, 0, 0), gt_black);
+	imshow("gtruth_b", gt_black);
 
-	imshow("gtruth", groundTruthImage);
+	//segregate ground truth into white only
+	inRange(groundTruthImage, Scalar(255, 255, 255), Scalar(255, 255, 255), gt_white);
+	imshow("gtruth_w", gt_white);
+
+	//segregate ground truth into black only
+	inRange(groundTruthImage, Scalar(0, 0, 255), Scalar(0, 0, 255), gt_red);
+	imshow("gtruth_r", gt_red);
 }
 
-void generateHistogram() {
+void segregate() {
 	Mat training_hsv, h, hist, backprojection;
 	float range[] = { 0, 180 };
 	const float* ranges[] = { range };
@@ -84,6 +92,8 @@ void generateHistogram() {
 	Mat compositeImage_copy;
 	compositeImage_copy = compositeImage;
 	bitwise_and(compositeImage_copy, compositeImage_copy, red, temp_range_red);
+	threshold(red, red, 0, 255, THRESH_BINARY);
+	morphologyEx(red, red, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(4, 4)));
 	imshow("Red", red);
 
 	/***p1 done***/

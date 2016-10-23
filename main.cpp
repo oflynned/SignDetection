@@ -26,10 +26,21 @@ Mat trainingImage = imread(trainingData, 1);
 void generateHistogram();
 void generateMetrics();
 
+Mat black, white, red;
+
 int main(int argc, const char** argv) {
 	generateHistogram();
+	//generateMetrics();
 	while (cv::waitKey(30) != ESC_KEY) {}
 	return 0;
+}
+
+void generateMetrics() {
+	Mat gt_red, gt_black, gt_white;
+	Mat gt_channels[3];
+
+
+	imshow("gtruth", groundTruthImage);
 }
 
 void generateHistogram() {
@@ -63,7 +74,7 @@ void generateHistogram() {
 	Mat closed_src;
 	morphologyEx(backprojection, closed_src, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 
-	Mat red, temp_range_red;
+	Mat temp_range_red;
 	Mat src_copy = imread(composite, 1);
 	cvtColor(src_copy, temp_range_red, CV_BGR2HLS);
 	inRange(temp_range_red, Scalar(0, 0, 75), Scalar(180, 180, 180), temp_range_red);
@@ -75,10 +86,10 @@ void generateHistogram() {
 	bitwise_and(compositeImage_copy, compositeImage_copy, red, temp_range_red);
 	imshow("Red", red);
 
-	//p1 done
+	/***p1 done***/
 
 	//find inside shapes in red signs
-	Mat black, white, temp_bw;
+	Mat temp_bw;
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
 	RNG rng(12345);
@@ -112,19 +123,27 @@ void generateHistogram() {
 	threshold(inner_areas, inner_areas, 0, 255, THRESH_BINARY_INV); 
 	floodFill(inner_areas, Point(0, 0), Scalar(0, 255, 0));
 	crop.copyTo(bw, inner_areas);
-	//imshow("inner_areas", inner_areas);
 
-	Mat black_output;
 	//binary threshold on inner parts of sign
 	floodFill(bw, Point(0, 0), Scalar(0, 255, 0));
 	cvtColor(bw, bw, CV_BGR2GRAY);
-	threshold(bw, black, 85, 255, THRESH_BINARY);
+	threshold(bw, black, 85, 255, THRESH_BINARY_INV);
+	morphologyEx(black, black, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(2, 2)));
 	imshow("Black", black);
 
-	//p2a done
+	/***p2a done***/
 
+	Mat black_overlay = black;
+	threshold(black_overlay, black_overlay, 0, 255, THRESH_BINARY_INV);
+	//imshow("overlay", black_overlay);
+
+	//sign insides
 	floodFill(bw, Point(0, 0), Scalar(0, 0, 0));
 	threshold(bw, white, 0, 255, THRESH_OTSU);
+	
+	//for the love of fucking God work
+	floodFill(black_overlay, Point(0, 0), Scalar(0, 0, 0));
+	bitwise_or(white, black_overlay, white);
 	imshow("White", white);
-	//p2b done
+	/***p2b done***/
 }

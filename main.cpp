@@ -24,6 +24,7 @@ Mat groundTruthImage = imread(groundTruth, 1);
 Mat trainingImage = imread(trainingData, 1);
 
 void generateHistogram();
+void generateMetrics();
 
 int main(int argc, const char** argv) {
 	generateHistogram();
@@ -56,29 +57,74 @@ void generateHistogram() {
 
 	//backproject to combine probabilities of testing and training
 	calcBackProject(&comp_hue, 1, 0, hist, backprojection, ranges, 1, true);
-	threshold(backprojection, backprojection, 220, 255, THRESH_BINARY | CV_THRESH_OTSU);
-	dilate(backprojection, backprojection, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+	threshold(backprojection, backprojection, 220, 255, THRESH_BINARY_INV);
 
 	//remove broken bits 
 	Mat closed_src;
-	Mat structuringElement = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
-	morphologyEx(backprojection, closed_src, MORPH_CLOSE, structuringElement);
+	morphologyEx(backprojection, closed_src, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 
-	Mat binary_inverted;
-	threshold(closed_src, binary_inverted, 125.0, 255.0, THRESH_BINARY_INV);
+	Mat red, temp_range_red;
+	Mat src_copy = imread(composite, 1);
+	cvtColor(src_copy, temp_range_red, CV_BGR2HLS);
+	inRange(temp_range_red, Scalar(0, 0, 75), Scalar(180, 180, 180), temp_range_red);
+	morphologyEx(temp_range_red, temp_range_red, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 
 	//bitwise against original image to remove the background
-	Mat bitwise_mask;
-	bitwise_and(compositeImage, compositeImage, bitwise_mask, binary_inverted);
-	imshow("Binary inverted", binary_inverted);
+	Mat compositeImage_copy;
+	compositeImage_copy = compositeImage;
+	bitwise_and(compositeImage_copy, compositeImage_copy, red, temp_range_red);
+	imshow("Red", red);
 
-	//outline the result
-	Mat outline;
-	Canny(binary_inverted, outline, 100, 255);
-	//imshow("Outline", outline);
+	//p1 done
 
-	Mat white, black;
-	cvtColor(compositeImage, white, COLOR_HSV2BGR);
-	threshold(compositeImage, white, 120, 255, CV_THRESH_BINARY);
-	imshow("Orig", white);
+	//find inside shapes in red signs
+	Mat black, white, temp_bw;
+	vector<vector<Point>> contours;
+	vector<Vec4i> hierarchy;
+	RNG rng(12345);
+
+	//outline and fill in contours
+	Canny(red, temp_bw, 100, 200);
+	findContours(temp_bw, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+	drawContours(temp_bw, contours, -1, Scalar(255), CV_FILLED);
+
+	// create new image + set bg colour
+	Mat crop(compositeImage.rows, compositeImage.cols, CV_8UC3);
+	crop.setTo(Scalar(0, 255, 0));
+
+	//copy back to original image to show only crops
+	compositeImage.copyTo(crop, temp_bw);
+	normalize(temp_bw.clone(), temp_bw, 0.0, 255.0, CV_MINMAX, CV_8UC1);
+	//imshow("Contoured", temp_bw);
+
+	//crop - bin_inv = b/w
+	//get areas to remove from crop
+	Mat bw(red.rows, red.cols, CV_8UC3);
+	cvtColor(red, bw, CV_BGR2GRAY);
+	threshold(bw, bw, 10, 255, THRESH_BINARY);
+
+	//copy back to original image to show only crops
+	Mat inner_areas(crop.rows, crop.cols, CV_8UC3);
+	inner_areas.setTo(Scalar(0, 0, 0));
+	crop.copyTo(inner_areas, bw);
+	normalize(bw.clone(), bw, 0.0, 255.0, CV_MINMAX, CV_8UC1);
+	cvtColor(inner_areas, inner_areas, CV_BGR2GRAY);
+	threshold(inner_areas, inner_areas, 0, 255, THRESH_BINARY_INV); 
+	floodFill(inner_areas, Point(0, 0), Scalar(0, 255, 0));
+	crop.copyTo(bw, inner_areas);
+	//imshow("inner_areas", inner_areas);
+
+	Mat black_output;
+	//binary threshold on inner parts of sign
+	floodFill(bw, Point(0, 0), Scalar(0, 255, 0));
+	cvtColor(bw, bw, CV_BGR2GRAY);
+	threshold(bw, black, 85, 255, THRESH_BINARY);
+	imshow("Black", black);
+
+	//p2a done
+
+	floodFill(bw, Point(0, 0), Scalar(0, 0, 0));
+	threshold(bw, white, 0, 255, THRESH_OTSU);
+	imshow("White", white);
+	//p2b done
 }

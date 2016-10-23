@@ -24,18 +24,19 @@ Mat groundTruthImage = imread(groundTruth, 1);
 Mat trainingImage = imread(trainingData, 1);
 
 void segregate();
-void generateMetrics();
+void separateGroundTruth();
+void generateMetrics(Mat& locations_found, Mat& ground_truth, double& precision, double& recall, double& accuracy, double& specificity, double& f1);
 
 Mat black, white, red;
 
 int main(int argc, const char** argv) {
 	segregate();
-	//generateMetrics();
+	separateGroundTruth();
 	while (cv::waitKey(30) != ESC_KEY) {}
 	return 0;
 }
 
-void generateMetrics() {
+void separateGroundTruth() {
 	Mat gt_red, gt_black, gt_white;
 
 	//segregate ground truth into black only
@@ -46,9 +47,46 @@ void generateMetrics() {
 	inRange(groundTruthImage, Scalar(255, 255, 255), Scalar(255, 255, 255), gt_white);
 	imshow("gtruth_w", gt_white);
 
-	//segregate ground truth into black only
+	//segregate ground truth into red only
 	inRange(groundTruthImage, Scalar(0, 0, 255), Scalar(0, 0, 255), gt_red);
 	imshow("gtruth_r", gt_red);
+
+	double p_r, r_r, a_r, s_r, f_r;
+	double p_w, r_w, a_w, s_w, f_w;
+	double p_b, r_b, a_b, s_b, f_b;
+
+	generateMetrics(red, gt_red, p_r, r_r, a_r, s_r, f_r);
+	generateMetrics(white, gt_white, p_w, r_w, a_w, s_w, f_w);
+	generateMetrics(black, gt_black, p_b, r_b, a_b, s_b, f_b);
+}
+
+void generateMetrics(Mat& locations_found, Mat& ground_truth, double& precision, double& recall, double& accuracy, double& specificity, double& f1) {
+	//CV_Assert(locations_found.type() == CV_8UC1);
+	//CV_Assert(ground_truth.type() == CV_8UC1);
+	int false_positives = 0;
+	int false_negatives = 0;
+	int true_positives = 0;
+	int true_negatives = 0;
+	for (int row = 0; row < ground_truth.rows; row++)
+		for (int col = 0; col < ground_truth.cols; col++)
+		{
+			uchar result = locations_found.at<uchar>(row, col);
+			uchar gt = ground_truth.at<uchar>(row, col);
+			if (gt > 0)
+				if (result > 0)
+					true_positives++;
+				else false_negatives++;
+			else if (result > 0)
+				false_positives++;
+			else true_negatives++;
+		}
+	precision = ((double)true_positives) / ((double)(true_positives + false_positives));
+	recall = ((double)true_positives) / ((double)(true_positives + false_negatives));
+	accuracy = ((double)(true_positives + true_negatives)) / ((double)(true_positives + false_positives + true_negatives + false_negatives));
+	specificity = ((double)true_negatives) / ((double)(false_positives + true_negatives));
+	f1 = 2.0*precision*recall / (precision + recall);
+	
+	cout << "Precision: " << precision << ", Recall: " << recall << ", Accuracy: " << accuracy << ", Specificity: " << specificity << ", f1: " << f1 << endl;
 }
 
 void segregate() {
@@ -94,7 +132,7 @@ void segregate() {
 	bitwise_and(compositeImage_copy, compositeImage_copy, red, temp_range_red);
 	threshold(red, red, 0, 255, THRESH_BINARY);
 	morphologyEx(red, red, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(4, 4)));
-	imshow("Red", red);
+	//imshow("Red", red);
 
 	/***p1 done***/
 
@@ -139,7 +177,7 @@ void segregate() {
 	cvtColor(bw, bw, CV_BGR2GRAY);
 	threshold(bw, black, 85, 255, THRESH_BINARY_INV);
 	morphologyEx(black, black, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(2, 2)));
-	imshow("Black", black);
+	//imshow("Black", black);
 
 	/***p2a done***/
 
@@ -154,6 +192,6 @@ void segregate() {
 	//for the love of fucking God work
 	floodFill(black_overlay, Point(0, 0), Scalar(0, 0, 0));
 	bitwise_or(white, black_overlay, white);
-	imshow("White", white);
+	//imshow("White", white);
 	/***p2b done***/
 }

@@ -28,6 +28,7 @@ void separateGroundTruth();
 void generateMetrics(string name, Mat& locations_found, Mat& ground_truth);
 
 Mat black, white, red;
+Mat comp_black;
 
 int main(int argc, const char** argv) {
 	segregate();
@@ -51,9 +52,12 @@ void separateGroundTruth() {
 	inRange(groundTruthImage, Scalar(0, 0, 255), Scalar(0, 0, 255), gt_red);
 	//imshow("gtruth_r", gt_red);
 
+	imshow("AYYYY BLACK", comp_black);
+	imshow("GT BLACK", gt_black);
+
 	generateMetrics("Red", red, gt_red);
-	generateMetrics("White", white, gt_white);
-	generateMetrics("Black", black, gt_black);
+	//generateMetrics("White", white, gt_white);
+	//generateMetrics("Black", comp_black, gt_black);
 }
 
 void generateMetrics(string name, Mat& locations_found, Mat& ground_truth) {
@@ -174,7 +178,8 @@ void segregate() {
 	cvtColor(bw, bw, CV_BGR2GRAY);
 	threshold(bw, black, 85, 255, THRESH_BINARY_INV);
 	morphologyEx(black, black, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(2, 2)));
-	//imshow("Black", black);
+	black.copyTo(comp_black);
+	//imshow("COMP Black", comp_black);
 
 	/***p2a done***/
 
